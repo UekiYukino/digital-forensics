@@ -109,7 +109,7 @@ def process_device_info(device_dict):
             pid = product_id.group(1)
 
         # Capture revision info
-        revision_capture = re.compile(r"(?:(?:mi)|(?:rev))_(.*?)\\")
+        revision_capture = re.compile(r"(?:(?:mi)|(?:rev))_(.*?)(\\|,)")
         revision_id = revision_capture.search(device)
         if revision_id:
             rev = revision_id.group(1)
@@ -123,31 +123,47 @@ def process_device_info(device_dict):
 
 
 def parse_device_from_log(log_file):
-    """Parsing the api log file for important data 
-    : Input: Path to the log file
+    """Parsing the api log file for important data
+    : Input: Path to the api log file
     : Output: A dictionary contain the device information string and its install date"""
     # Start declare a dictionary for storing result
     device_dict = {}
 
-    # File  path check
-    if os.path.isfile(log_file):
-        with open(log_file, "r") as api_log:
-            for line in api_log:
-                # Search for string that indicate installation of new devices
-                if "device install (hardware initiated)" in line.lower() and ("ven" in line.lower() or "vid" in line.lower()):
-                    # Extract information from the line with indicator and the next line which contains the install date
-                    device_info = line.split(
-                        "-")[1].lower().replace("]", "").strip()
-                    date_install = next(api_log).split(
-                        "start")[1].strip().lower()
+    with open(log_file, "r") as api_log:
+        for line in api_log:
+            # Search for string that indicate installation of new devices
+            if "device install (hardware initiated)" in line.lower() and ("ven" in line.lower() or "vid" in line.lower()):
+                # Extract information from the line with indicator and the next line which contains the install date
+                device_info = line.split(
+                    "-")[1].lower().replace("]", "").strip()
+                date_install = next(api_log).split(
+                    "start")[1].strip().lower()
 
-                    # Only add the records that start with "usb" for usb information
-                    if device_info.startswith("usb"):
-                        device_dict[device_info] = date_install
-        return device_dict
-    else:
-        print("[-] File does not exist!")
-        sys.exit(1)
+                # Only add the records that start with "usb" for usb information
+                if device_info.startswith("usb"):
+                    device_dict[device_info] = date_install
+    return device_dict
+
+
+def parse_device_winxp(log_file):
+    """Parsing the api log file from Windows XP for important data 
+    : Input: Path to the api log file (Windows XP)
+    : Output: A dictionary contain the device information string and its install date"""
+    # Initialize device dictionary
+    device_dict = {}
+    with open(log_file, "r") as api_log:
+        for line in api_log:
+            # Search for string that indicate installation of new devices
+            if "driver install]" in line.lower():
+                # Extract the install date and the string after that which indicate the hardware that is installed
+                date_install = " ".join(line.split(" ")[
+                                        :3]).replace("[", "").strip()
+                device_info = next(api_log).split(" ")[-1].strip()
+
+                # Only extract the devices that start with "usb"
+                if device_info.startswith("usb"):
+                    device_dict[device_info] = date_install
+    return device_dict
 
 
 def main():
@@ -156,8 +172,26 @@ def main():
     # As user for the log file location
     log_file = input("Enter the path to your log file: ")
 
-    # Parsing device infromation from log file
-    devices_dict = parse_device_from_log(log_file)
+    # Check to see if file exist
+    if not os.path.isfile(log_file):
+        print("[-] Error! File does not exist!")
+        sys.exit(1)
+
+    # Prompting users for log type
+    win_version = input("Is the log file from Windows XP? (y/n) ")
+    while win_version.lower() != ("y" or "n"):
+        print("[-] Invalid option! Only (y/n) is allow")
+        win_version = input("Is the log file from Windows XP? (y/n) ")
+
+    # Use WinXP parser if the log is from Windows XP system
+    if win_version.lower() == "y":
+        devices_dict = parse_device_winxp(log_file)
+
+    # Else (From Windows 7 or higher) -> Parse it normally
+    else:
+        # Parsing device infromation from log file
+        devices_dict = parse_device_from_log(log_file)
+
     # Escape if no entry for USB is found
     if not devices_dict:
         print("[-] Could not find any entry for USB! Exiting...")
