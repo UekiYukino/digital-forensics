@@ -6,7 +6,8 @@ In order for the program to run, you will need the Registry module, which could 
 https://github.com/williballenthin/python-registry
 
 #### NTUSER.DAT
-`NTUSER.DAT` is a registry hives that store information of users' activities on the system. From this file, we could retrieve the __UserAssist__ artifact.<br/>
+`NTUSER.DAT` is a registry hives that store information of users' activities on the system. Usually found under %systemdrive%\Users\<[UserName]>\NTUSER.DAT, you could use tools like FTK Imager to export this file.<br/>
+From this file, we could retrieve the __UserAssist__ artifact.<br/>
 __UserAssist__ stores information of run programs, including:
 + The last execution time in UTC (in FILETIME format)
 + Execution count
